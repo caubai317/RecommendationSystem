@@ -18,45 +18,73 @@ b = np.array([
     [3, 2, nan, 4]
 ])
 
-#Tiền xử lý
-def pre_processing(array):
-    #Trung bình cộng rating của mỗi user
-    mean_column = np.nanmean(array, axis=0)
-    #Trừ rating mỗi user cho TBC
-    array2 = np.round(array - mean_column, 2)
-    #Chuyển tất cả NaN về giá trị 0
-    array2[np.isnan(array2)] = 0
-    return array2
 
-#Hàm tính độ tương tự giữa các user
-def cosine_similarity(array):
-    array_cosine = np.eye(array.shape[1])
-    for i in range(array.shape[1]):
-        for j in range(i+1, array.shape[1]):
-            u = array[:,i]
-            w = array[:,j]
-            array_cosine[i,j] = u.T.dot(w)/(norm(u)*norm(w))
-            array_cosine[j,i] = array_cosine[i,j]
-    return array_cosine
-
-def predict_rating(i, u, k, norm_array, similar_table):
-    #Tìm vị trí tất cả user đã rate item i
-    user_rated_col = np.where(norm_array[i,:] != 0)[0].astype(np.int32)
-    #Sim giữa user u với các user vừa tìm được
-    sim_user_rated = similar_table[u, user_rated_col]
-    #Rating của các user vừa tìm được cho item i
-    arr_user_rated = norm_array[i, user_rated_col]
-    #Tìm vị trí k user giống nhất với user u
-    k_similarest_user = np.argsort(sim_user_rated)[-k:]
+"""
+Thực tế thì số user lớn hơn item rất nhiều 
+-> Nên dựa vào item-item kết quả tốt hơn, ít chỉnh sửa hơn 
+"""
+#Item-item Collaborative Filtering
+class CF(object):
+    def __init__(self, array, i, u, k, uuCF = 1):
+        self.uuCF = uuCF
+        self.array = array if uuCF else array[:, [1, 0, 2]]
+        self.k = k
+        self.i = i
+        self.u = u 
     
-    a = arr_user_rated[k_similarest_user]
-    b = sim_user_rated[k_similarest_user]
-    predict = np.sum(a * b) / np.sum(abs(b))
-    print (predict)
+    #Tiền xử lý
+    def pre_processing(self):
+        #Trung bình cộng rating của mỗi user (không chứa NaN)
+        self.mean_column = np.nanmean(self.array, axis=0)
+        #Trừ rating mỗi user cho TBC
+        self.array = np.round(self.array - self.mean_column, 2)
+        #Chuyển tất cả NaN về giá trị 0
+        self.array[np.isnan(self.array)] = 0 
 
-norm_array = pre_processing(a)
-similar_table = np.round(cosine_similarity(norm_array),2)
-predict_rating(4,5,2,norm_array, similar_table)
+    #Hàm tính độ tương tự giữa các user
+    def cosine_similarity(self):
+        self.array_cosine = np.eye(self.array.shape[1])
+        #cosine_similarity(a,b) = cos(a,b) = (a.T * b)/(norm(a)*norm(b))
+        #Tính cosine của 2 vector a và b => Độ tương tự (similar) của a và b
+        for i in range(self.array.shape[1]):
+            for j in range(i+1, self.array.shape[1]):
+                u = self.array[:,i]
+                w = self.array[:,j]
+                self.array_cosine[i,j] = u.T.dot(w)/(norm(u)*norm(w))
+                self.array_cosine[j,i] = self.array_cosine[i,j]
+        self.similar_table = np.round(self.array_cosine,2)
+        
+    #Hàm dự đoán cho đánh giá item i của user u dựa trên k user gần giống nhất
+    def predict_rating(self): #i, u, k, norm_array, similar_table):
+        #Tìm vị trí tất cả user đã rate item i
+        user_rated_col = np.where(self.array[self.i,:] != 0)[0].astype(np.int32)
+        #Sim giữa user u với các user vừa tìm được
+        sim_user_rated = self.similar_table[self.u, user_rated_col]
+        #Rating của các user vừa tìm được cho item i
+        arr_user_rated = self.array[self.i, user_rated_col]
+        #Tìm vị trí k user giống nhất với user u
+        k_similarest_user = np.argsort(sim_user_rated)[-self.k:]
+        
+        a = arr_user_rated[k_similarest_user]
+        b = sim_user_rated[k_similarest_user]
+        self.predict = np.sum(a * b) / np.sum(abs(b))
+        print (np.round(self.predict + self.mean_column[self.u], 2))
 
-print(pre_processing(b))
-print(cosine_similarity(pre_processing(b)))
+    def refresh(self):
+        self.pre_processing()
+        self.cosine_similarity()
+        self.predict_rating()
+
+predict = CF(a, i=1, u=4, k=2)
+predict.refresh()
+
+def predict_all(array):
+    for i in range(array.shape[0]):
+        arr = np.where(np.isnan(array[i,:]))[0]
+        if arr.size > 0:
+            for j in arr:
+                print(i, j)
+                predict = CF(a, i=i, u=j, k=2)
+                predict.refresh()
+    
+predict_all(a)
