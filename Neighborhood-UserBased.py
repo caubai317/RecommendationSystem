@@ -75,8 +75,8 @@ class CF(object):
         self.cosine_similarity()
         self.predict_rating()
 
-predict = CF(a, i=1, u=4, k=2)
-predict.refresh()
+# predict = CF(a, i=1, u=4, k=2)
+# predict.refresh()
 
 def predict_all(array):
     for i in range(array.shape[0]):
@@ -87,4 +87,4 @@ def predict_all(array):
                 predict = CF(a, i=i, u=j, k=2)
                 predict.refresh()
     
-predict_all(a)
+predict_all(b)
