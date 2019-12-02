@@ -68,12 +68,13 @@ class CF(object):
         a = arr_user_rated[k_similarest_user]
         b = sim_user_rated[k_similarest_user]
         self.predict = np.sum(a * b) / np.sum(abs(b))
-        print (np.round(self.predict + self.mean_column[self.u], 2))
+        return np.round(self.predict + self.mean_column[self.u], 2)
 
     def refresh(self):
         self.pre_processing()
         self.cosine_similarity()
         self.predict_rating()
+        return self.predict_rating()
 
 # predict = CF(a, i=1, u=4, k=2)
 # predict.refresh()
@@ -85,6 +86,7 @@ def predict_all(array):
             for j in arr:
                 print(i, j)
                 predict = CF(a, i=i, u=j, k=2)
-                predict.refresh()
-    
-predict_all(b)
+                array[i,j]= predict.refresh()
+    return array
+
+print(predict_all(a))
